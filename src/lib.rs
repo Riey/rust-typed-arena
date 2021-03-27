@@ -273,6 +273,30 @@ impl<T> Arena<T> {
         unsafe { mem::transmute::<&mut [T], &mut [T]>(new_slice_ref) }
     }
 
+    /// Clone the contents of an slice to allocate values in the arena.
+    /// Returns a mutable slice that contains these values.
+    pub fn alloc_slice_clone<'a, 'b>(&'a self, slice: &'b [T]) -> &'a mut [T] where T: Clone {
+        let uninit = unsafe { self.alloc_uninitialized(slice.len()) };
+        for (dest, src) in uninit.iter_mut().zip(slice.iter()) {
+            *dest = MaybeUninit::new(src.clone());
+        }
+        unsafe { mem::transmute(uninit) }
+    }
+
+    /// Copy the contents of an slice to allocate values in the arena.
+    /// Returns a mutable slice that contains these values.
+    pub fn alloc_slice_copy<'a, 'b>(&'a self, slice: &'b [T]) -> &'a mut [T] where T: Copy {
+        unsafe {
+            let uninit = self.alloc_uninitialized(slice.len());
+            core::ptr::copy_nonoverlapping(
+                slice.as_ptr(),
+                uninit.as_mut_ptr() as *mut T,
+                slice.len(),
+            );
+            mem::transmute(uninit)
+        }
+    }
+
     /// Allocates space for a given number of values, but doesn't initialize it.
     ///
     /// ## Safety
