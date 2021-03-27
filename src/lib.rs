@@ -275,24 +275,34 @@ impl<T> Arena<T> {
 
     /// Clone the contents of an slice to allocate values in the arena.
     /// Returns a mutable slice that contains these values.
-    pub fn alloc_slice_clone<'a, 'b>(&'a self, slice: &'b [T]) -> &'a mut [T] where T: Clone {
+    pub fn alloc_slice_clone<'a, 'b>(&'a self, slice: &'b [T]) -> &'a mut [T]
+    where
+        T: Clone,
+    {
         let uninit = unsafe { self.alloc_uninitialized(slice.len()) };
+        // Clone element by element
         for (dest, src) in uninit.iter_mut().zip(slice.iter()) {
             *dest = MaybeUninit::new(src.clone());
         }
+        // Now all elements are initialized
         unsafe { mem::transmute(uninit) }
     }
 
     /// Copy the contents of an slice to allocate values in the arena.
     /// Returns a mutable slice that contains these values.
-    pub fn alloc_slice_copy<'a, 'b>(&'a self, slice: &'b [T]) -> &'a mut [T] where T: Copy {
+    pub fn alloc_slice_copy<'a, 'b>(&'a self, slice: &'b [T]) -> &'a mut [T]
+    where
+        T: Copy,
+    {
         unsafe {
             let uninit = self.alloc_uninitialized(slice.len());
+            // Since T: Copy ptr::copy is enough
             core::ptr::copy_nonoverlapping(
                 slice.as_ptr(),
                 uninit.as_mut_ptr() as *mut T,
                 slice.len(),
             );
+            // All elements are copied from source slice
             mem::transmute(uninit)
         }
     }
@@ -424,7 +434,7 @@ impl<T> Arena<T> {
         let next_item_index = chunks.current.len();
 
         unsafe {
-        // Go through pointers, to make sure we never create a reference to uninitialized T.
+            // Go through pointers, to make sure we never create a reference to uninitialized T.
             let start = chunks.current.as_mut_ptr().offset(next_item_index as isize);
             let start_uninit = start as *mut MaybeUninit<T>;
             slice::from_raw_parts_mut(start_uninit, len) as *mut _
