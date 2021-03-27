@@ -285,7 +285,7 @@ impl<T> Arena<T> {
             *dest = MaybeUninit::new(src.clone());
         }
         // Now all elements are initialized
-        unsafe { mem::transmute(uninit) }
+        unsafe { slice::from_raw_parts_mut(uninit.as_mut_ptr() as *mut T, uninit.len()) }
     }
 
     /// Copy the contents of an slice to allocate values in the arena.
@@ -303,7 +303,7 @@ impl<T> Arena<T> {
                 slice.len(),
             );
             // All elements are copied from source slice
-            mem::transmute(uninit)
+            slice::from_raw_parts_mut(uninit.as_mut_ptr() as *mut T, uninit.len())
         }
     }
 
